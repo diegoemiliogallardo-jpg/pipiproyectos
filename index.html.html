@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pipilist - Lista Familiar Inteligente</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    body { background-color: #0f172a; color: #f8fafc; font-family: system-ui, -apple-system, sans-serif; }
+    .glass-panel { background: rgba(30, 41, 59, 0.85); backdrop-filter: blur(8px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #475569; border-radius: 9999px; }
+  </style>
+</head>
+<body class="p-3 sm:p-6 flex justify-center min-h-screen">
+
+<div class="w-full max-w-xl flex flex-col gap-4">
+
+  <!-- CABECERA PRINCIPAL -->
+  <header class="glass-panel p-4 rounded-2xl flex items-center justify-between shadow-xl">
+    <div>
+      <h1 id="appTitle" class="text-2xl font-black bg-gradient-to-r from-teal-400 via-indigo-400 to-pink-500 bg-clip-text text-transparent cursor-pointer" onclick="openSettingsModal()">Pipilist 🛒</h1>
+      <p id="appSubtitle" class="text-xs text-slate-400">Compras de la familia</p>
+    </div>
+
+    <!-- BOTONES ACCIÓN RÁPIDA -->
+    <div class="flex items-center gap-2">
+      <!-- BOTÓN DESTACADO DE CONFIGURACIÓN -->
+      <button onclick="openSettingsModal()" class="flex items-center gap-1.5 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-indigo-600/30 transition-all border border-indigo-400/40">
+        <i class="fa-solid fa-gear text-sm"></i>
+        <span>Configuración</span>
+      </button>
+
+      <!-- Botón WhatsApp -->
+      <button onclick="shareWhatsApp()" title="Compartir lista por WhatsApp" class="w-9 h-9 flex items-center justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl shadow-md transition-all">
+        <i class="fa-brands fa-whatsapp text-lg"></i>
+      </button>
+
+      <!-- Selector de Usuario Activo -->
+      <div class="flex items-center gap-2 pl-1 border-l border-slate-700">
+        <img id="userAvatarHeader" src="https://api.dicebear.com/7.x/bottts/svg?seed=Pipi" class="w-8 h-8 rounded-full border border-teal-400 object-cover" alt="Perfil">
+        <select id="userSelector" onchange="changeUser()" class="bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-lg py-1 px-1.5 focus:outline-none focus:ring-1 focus:ring-teal-400">
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- BARRA DE ENTRADA INTELIGENTE: FOTO IA Y DICTADO -->
+  <section class="grid grid-cols-2 gap-2">
+    <!-- BOTÓN ESCANEAR CON IA -->
+    <label class="cursor-pointer flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-fuchsia-600 to-indigo-600 hover:from-fuchsia-500 hover:to-indigo-500 text-white font-medium text-xs rounded-xl shadow-lg transition-transform active:scale-95 text-center">
+      <i class="fa-solid fa-camera text-base"></i>
+      <span>📸 Escanear foto manuscrita</span>
+      <input type="file" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
+    </label>
+
+    <!-- BOTÓN DICTAR POR VOZ -->
+    <button onclick="startVoiceRecognition()" id="micBtn" class="flex items-center justify-center gap-2 p-3 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-500 hover:to-cyan-500 text-white font-medium text-xs rounded-xl shadow-lg transition-transform active:scale-95 text-center">
+      <i class="fa-solid fa-microphone text-base" id="micIcon"></i>
+      <span id="micText">🎙️ Dictar por voz</span>
+    </button>
+  </section>
+
+  <!-- FORMULARIO MANUAL DE PRODUCTO -->
+  <section class="glass-panel p-4 rounded-2xl flex flex-col gap-3 shadow-lg">
+    <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+      <h2 class="text-sm font-semibold text-slate-200 flex items-center gap-2">
+        <i class="fa-solid fa-plus-circle text-teal-400"></i> Agregar Artículo
+      </h2>
+      <div id="aiStatusBadge" class="text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+        IA: Sin clave
+      </div>
+    </div>
+
+    <div class="flex gap-2">
+      <input type="text" id="itemName" placeholder="Nombre (ej. 2 kg Manzanas)..." class="flex-1 bg-slate-800/90 text-sm px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-1 focus:ring-teal-400 placeholder:text-slate-500">
+      <input type="text" id="itemQty" placeholder="Cant. (1 u)" class="w-24 bg-slate-800/90 text-sm px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-1 focus:ring-teal-400 placeholder:text-slate-500">
+    </div>
+
+    <div class="grid grid-cols-2 gap-2">
+      <select id="itemCategory" class="bg-slate-800/90 text-sm px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-1 focus:ring-teal-400 text-slate-200">
+      </select>
+      <input type="url" id="itemLink" placeholder="Link de compra (opcional)" class="bg-slate-800/90 text-sm px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-1 focus:ring-teal-400 placeholder:text-slate-500">
+    </div>
+
+    <input type="text" id="itemNotes" placeholder="Notas (ej. Marca específica, maduras...)" class="bg-slate-800/90 text-xs px-3 py-2 rounded-xl border border-slate-700 focus:outline-none focus:ring-1 focus:ring-teal-400 placeholder:text-slate-500">
+
+    <button onclick="addItemFromForm()" class="w-full py-2.5 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold rounded-xl text-sm transition-all shadow-md shadow-teal-500/20 active:scale-98">
+      + Agregar a la Lista
+    </button>
+  </section>
+
+  <!-- PESTAÑAS: LISTA ACTIVA / HISTORIAL DOMINGOS -->
+  <div class="flex items-center justify-between border-b border-slate-700 pb-2">
+    <div class="flex gap-2">
+      <button onclick="switchTab('active')" id="tabActiveBtn" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40">
+        Lista Activa (<span id="activeCount">0</span>)
+      </button>
+      <button onclick="switchTab('history')" id="tabHistoryBtn" class="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-transparent">
+        Histórico Semanal
+      </button>
+    </div>
+    <button onclick="closeWeekSunday()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1 rounded-lg border border-slate-600 transition-all flex items-center gap-1.5">
+      <i class="fa-solid fa-calendar-check text-teal-400"></i> Cerrar Semana
+    </button>
+  </div>
+
+  <!-- CONTENEDOR DE PRODUCTOS -->
+  <main id="itemsContainer" class="flex flex-col gap-3 pb-12"></main>
+
+  <!-- CONTENEDOR DE HISTORIAL SEMANAL -->
+  <section id="historyContainer" class="hidden flex-col gap-3 pb-12"></section>
+
+</div>
+
+<!-- ==================== MODAL DE CONFIGURACIÓN ==================== -->
+<div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+  <div class="glass-panel w-full max-w-md rounded-2xl p-5 border border-slate-600 shadow-2xl flex flex-col gap-4 max-h-[90vh] overflow-y-auto custom-scroll">
+    <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+      <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+        <i class="fa-solid fa-sliders text-indigo-400"></i> Configuración de Pipilist
+      </h3>
+      <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-200 text-lg">✕</button>
+    </div>
+
+    <!-- SECCIÓN CLAVE DE GEMINI VISION -->
+    <div class="flex flex-col gap-2 bg-slate-900/80 p-3.5 rounded-xl border border-indigo-500/30">
+      <div class="flex items-center justify-between">
+        <label class="text-xs font-bold text-indigo-300 flex items-center gap-1.5">
+          <i class="fa-solid fa-brain"></i> Clave Gemini Vision (Google AI)
+        </label>
+        <span id="keyStatusBadge" class="text-[10px] text-amber-400 font-medium">No configurada</span>
+      </div>
+      <p class="text-[11px] text-slate-400">
+        Permite a la IA leer tu letra manuscrita directamente desde la foto. Es 100% gratuita.
+      </p>
+      <input type="password" id="geminiApiKeyInput" placeholder="Pega aquí tu clave (AIzaSy...)" class="bg-slate-950 text-xs px-3 py-2 rounded-lg border border-slate-700 text-slate-100 focus:outline-none focus:ring-1 focus:ring-indigo-400">
+      <div class="flex gap-2 mt-1">
+        <button onclick="saveApiKey()" class="flex-1 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs rounded-lg transition-all">
+          Guardar Clave
+        </button>
+        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs rounded-lg flex items-center gap-1">
+          <span>Obtener clave gratis</span> <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+        </a>
+      </div>
+    </div>
+
+    <!-- GESTIÓN DE FAMILIARES -->
+    <div class="flex flex-col gap-2">
+      <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Integrantes de la Familia</h4>
+      <div id="membersList" class="flex flex-col gap-2"></div>
+      <div class="flex gap-2 mt-1">
+        <input type="text" id="newMemberName" placeholder="Nuevo integrante..." class="flex-1 bg-slate-800 text-xs px-3 py-2 rounded-lg border border-slate-700 text-slate-100">
+        <button onclick="addFamilyMember()" class="px-3 py-2 bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs rounded-lg">
+          + Agregar
+        </button>
+      </div>
+    </div>
+
+    <!-- GESTIÓN DE CATEGORÍAS -->
+    <div class="flex flex-col gap-2 border-t border-slate-700/60 pt-3">
+      <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Categorías</h4>
+      <div id="categoriesSettingsList" class="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto"></div>
+      <div class="flex gap-2 mt-1">
+        <input type="text" id="newCatInput" placeholder="Nueva categoría..." class="flex-1 bg-slate-800 text-xs px-3 py-2 rounded-lg border border-slate-700 text-slate-100">
+        <button onclick="addCategory()" class="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs rounded-lg">
+          + Crear
+        </button>
+      </div>
+    </div>
+
+    <!-- NOMBRE DE LA APP -->
+    <div class="flex flex-col gap-2 border-t border-slate-700/60 pt-3">
+      <h4 class="text-xs font-bold text-slate-300 uppercase tracking-wider">Nombre de la App</h4>
+      <input type="text" id="appNameInput" placeholder="Pipilist" class="bg-slate-800 text-xs px-3 py-2 rounded-lg border border-slate-700 text-slate-100">
+      <button onclick="saveAppName()" class="py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold rounded-lg">
+        Actualizar Nombre
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== MODAL DE REVISIÓN IA (¿ES CORRECTA LA INTERPRETACIÓN?) ==================== -->
+<div id="aiReviewModal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+  <div class="glass-panel w-full max-w-lg rounded-2xl p-5 border border-indigo-500/40 shadow-2xl flex flex-col gap-4 max-h-[90vh]">
+    <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+      <div>
+        <h3 class="text-base font-bold text-white flex items-center gap-2">
+          <i class="fa-solid fa-wand-magic-sparkles text-indigo-400"></i> ¿Es correcta la interpretación?
+        </h3>
+        <p class="text-xs text-slate-400">Revisa y ajusta lo leído antes de agregarlo a la lista familiar</p>
+      </div>
+      <button onclick="closeReviewModal()" class="text-slate-400 hover:text-slate-200 text-lg">✕</button>
+    </div>
+
+    <!-- Lista de items leídos -->
+    <div id="aiReviewList" class="flex flex-col gap-2.5 overflow-y-auto max-h-[55vh] custom-scroll pr-1"></div>
+
+    <div class="flex items-center justify-between pt-3 border-t border-slate-700">
+      <button onclick="addManualReviewRow()" class="text-xs text-indigo-400 hover:text-indigo-300 font-semibold flex items-center gap-1">
+        <i class="fa-solid fa-plus"></i> Sumar renglón no detectado
+      </button>
+      <div class="flex gap-2">
+        <button onclick="closeReviewModal()" class="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs">
+          Cancelar
+        </button>
+        <button onclick="confirmAiBatchImport()" class="px-4 py-2 bg-gradient-to-r from-teal-500 to-indigo-600 hover:from-teal-400 hover:to-indigo-500 text-white font-bold text-xs rounded-xl shadow-lg">
+          ✅ Confirmar y Cargar en Pipilist
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ================= ESTADO GLOBAL =================
+  let defaultCategories = ["Supermercado", "Verdulería", "Carnicería", "Farmacia", "Limpieza", "Varios"];
+  let defaultUsers = ["Mamá", "Papá", "Hijo/a"];
+  
+  let categories = JSON.parse(localStorage.getItem('pipi_cats')) || defaultCategories;
+  let users = JSON.parse(localStorage.getItem('pipi_users')) || defaultUsers;
+  let currentUser = localStorage.getItem('pipi_cur_user') || users[0];
+  let items = JSON.parse(localStorage.getItem('pipi_items')) || [];
+  let historyWeeks = JSON.parse(localStorage.getItem('pipi_history')) || [];
+  let geminiKey = localStorage.getItem('pipi_gemini_key') || "";
+  let appName = localStorage.getItem('pipi_app_name') || "Pipilist";
+
+  let pendingReviewItems = [];
+
+  // ================= INICIALIZACIÓN =================
+  function init() {
+    document.getElementById('appTitle').innerText = `${appName} 🛒`;
+    document.getElementById('geminiApiKeyInput').value = geminiKey;
+    document.getElementById('appNameInput').value = appName;
+    updateKeyBadge();
+    renderCategories();
+    renderUsers();
+    renderItems();
+  }
+
+  function updateKeyBadge() {
+    const statusBadge = document.getElementById('keyStatusBadge');
+    const headerBadge = document.getElementById('aiStatusBadge');
+    if (geminiKey.trim()) {
+      statusBadge.innerText = "Conectada";
+      statusBadge.className = "text-[10px] text-teal-400 font-bold";
+      headerBadge.innerText = "IA: Conectada ✨";
+      headerBadge.className = "text-[10px] px-2 py-0.5 rounded-full bg-teal-950 text-teal-300 border border-teal-700";
+    } else {
+      statusBadge.innerText = "Sin clave";
+      statusBadge.className = "text-[10px] text-amber-400 font-medium";
+      headerBadge.innerText = "IA: Sin clave";
+      headerBadge.className = "text-[10px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700";
+    }
+  }
+
+  function renderCategories() {
+    const select = document.getElementById('itemCategory');
+    select.innerHTML = categories.map(c => `<option value="${c}">${c}</option>`).join('');
+
+    const list = document.getElementById('categoriesSettingsList');
+    list.innerHTML = categories.map(c => `
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs bg-slate-800 border border-slate-700 text-slate-300">
+        ${c}
+        <button onclick="removeCategory('${c}')" class="text-slate-400 hover:text-red-400">✕</button>
+      </span>
+    `).join('');
+  }
+
+  function renderUsers() {
+    const select = document.getElementById('userSelector');
+    select.innerHTML = users.map(u => `<option value="${u}" ${u === currentUser ? 'selected' : ''}>${u}</option>`).join('');
+    
+    document.getElementById('userAvatarHeader').src = `https://api.dicebear.com/7.x/bottts/svg?seed=${currentUser}`;
+
+    const list = document.getElementById('membersList');
+    list.innerHTML = users.map(u => `
+      <div class="flex items-center justify-between p-2 rounded-lg bg-slate-800/80 border border-slate-700 text-xs">
+        <div class="flex items-center gap-2">
+          <img src="https://api.dicebear.com/7.x/bottts/svg?seed=${u}" class="w-6 h-6 rounded-full border border-teal-400/50">
+          <span class="font-medium text-slate-200">${u}</span>
+        </div>
+        ${users.length > 1 ? `<button onclick="removeUser('${u}')" class="text-slate-400 hover:text-rose-400">✕</button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  function changeUser() {
+    currentUser = document.getElementById('userSelector').value;
+    localStorage.setItem('pipi_cur_user', currentUser);
+    document.getElementById('userAvatarHeader').src = `https://api.dicebear.com/7.x/bottts/svg?seed=${currentUser}`;
+    renderItems();
+  }
+
+  // ================= MODAL CONFIGURACIÓN =================
+  function openSettingsModal() { document.getElementById('settingsModal').classList.remove('hidden'); }
+  function closeSettingsModal() { document.getElementById('settingsModal').classList.add('hidden'); }
+
+  function saveApiKey() {
+    const val = document.getElementById('geminiApiKeyInput').value.trim();
+    geminiKey = val;
+    localStorage.setItem('pipi_gemini_key', geminiKey);
+    updateKeyBadge();
+    alert("Clave de Gemini guardada correctamente.");
+  }
+
+  function saveAppName() {
+    const val = document.getElementById('appNameInput').value.trim();
+    if (!val) return;
+    appName = val;
+    localStorage.setItem('pipi_app_name', appName);
+    document.getElementById('appTitle').innerText = `${appName} 🛒`;
+    alert("Nombre actualizado.");
+  }
+
+  function addFamilyMember() {
+    const input = document.getElementById('newMemberName');
+    const name = input.value.trim();
+    if (!name || users.includes(name)) return;
+    users.push(name);
+    localStorage.setItem('pipi_users', JSON.stringify(users));
+    input.value = "";
+    renderUsers();
+  }
+
+  function removeUser(name) {
+    if (confirm(`¿Eliminar al familiar ${name}?`)) {
+      users = users.filter(u => u !== name);
+      if (currentUser === name) currentUser = users[0];
+      localStorage.setItem('pipi_users', JSON.stringify(users));
+      localStorage.setItem('pipi_cur_user', currentUser);
+      renderUsers();
+      renderItems();
+    }
+  }
+
+  function addCategory() {
+    const input = document.getElementById('newCatInput');
+    const cat = input.value.trim();
+    if (!cat || categories.includes(cat)) return;
+    categories.push(cat);
+    localStorage.setItem('pipi_cats', JSON.stringify(categories));
+    input.value = "";
+    renderCategories();
+  }
+
+  function removeCategory(cat) {
+    if (confirm(`¿Eliminar categoría ${cat}? Los artículos pasarán a Varios.`)) {
+      categories = categories.filter(c => c !== cat);
+      items.forEach(i => { if (i.category === cat) i.category = "Varios"; });
+      localStorage.setItem('pipi_cats', JSON.stringify(categories));
+      saveItems();
+      renderCategories();
+    }
+  }
+
+  // ================= GESTIÓN DE ARTÍCULOS =================
+  function saveItems() {
+    localStorage.setItem('pipi_items', JSON.stringify(items));
+    renderItems();
+  }
+
+  function addItemFromForm() {
+    const name = document.getElementById('itemName').value.trim();
+    const qty = document.getElementById('itemQty').value.trim() || "1 u";
+    const category = document.getElementById('itemCategory').value;
+    const link = document.getElementById('itemLink').value.trim();
+    const notes = document.getElementById('itemNotes').value.trim();
+
+    if (!name) return alert("Ingresa al menos el nombre del producto.");
+
+    items.unshift({
+      id: Date.now(),
+      name,
+      qty,
+      category,
+      link,
+      notes,
+      bought: false,
+      author: currentUser,
+      date: new Date().toLocaleDateString('es-AR')
+    });
+
+    document.getElementById('itemName').value = "";
+    document.getElementById('itemQty').value = "";
+    document.getElementById('itemLink').value = "";
+    document.getElementById('itemNotes').value = "";
+    saveItems();
+  }
+
+  function toggleBought(id) {
+    items = items.map(i => i.id === id ? { ...i, bought: !i.bought } : i);
+    saveItems();
+  }
+
+  function deleteItem(id) {
+    items = items.filter(i => i.id !== id);
+    saveItems();
+  }
+
+  function getAutoEmoji(name, cat) {
+    const text = (name + " " + cat).toLowerCase();
+    if (text.includes("banana")) return "🍌";
+    if (text.includes("manzan")) return "🍎";
+    if (text.includes("leche")) return "🥛";
+    if (text.includes("carne") || text.includes("asado")) return "🥩";
+    if (text.includes("pollo")) return "🍗";
+    if (text.includes("pan")) return "🍞";
+    if (text.includes("queso")) return "🧀";
+    if (text.includes("huevo")) return "🥚";
+    if (text.includes("medic") || text.includes("farmacia") || text.includes("aspirin")) return "💊";
+    if (text.includes("limp") || text.includes("lavandina") || text.includes("jabon")) return "🧼";
+    if (text.includes("verdul")) return "🥗";
+    return "🛒";
+  }
+
+  function renderItems() {
+    const container = document.getElementById('itemsContainer');
+    document.getElementById('activeCount').innerText = items.filter(i => !i.bought).length;
+
+    if (items.length === 0) {
+      container.innerHTML = `
+        <div class="glass-panel p-8 rounded-2xl text-center text-slate-400 flex flex-col items-center gap-2">
+          <i class="fa-solid fa-basket-shopping text-3xl text-slate-500"></i>
+          <p class="text-sm">La lista de compras está vacía.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = items.map(item => `
+      <div class="glass-panel p-3.5 rounded-2xl border ${item.bought ? 'border-emerald-500/30 bg-emerald-950/10' : 'border-slate-700/70'} flex flex-col gap-2 transition-all">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2.5 flex-1 min-w-0">
+            <input type="checkbox" ${item.bought ? 'checked' : ''} onchange="toggleBought(${item.id})" class="w-5 h-5 rounded accent-teal-500 cursor-pointer">
+            <span class="text-xl">${getAutoEmoji(item.name, item.category)}</span>
+            <div class="flex flex-col min-w-0">
+              <span class="text-sm font-semibold text-slate-100 ${item.bought ? 'line-through text-slate-400' : ''} truncate">${item.name}</span>
+              <div class="flex items-center gap-2 text-[11px] text-slate-400">
+                <span class="text-teal-400 font-medium">${item.qty}</span>
+                <span>•</span>
+                <span class="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] text-slate-300 border border-slate-700">${item.category}</span>
+              </div>
+            </div>
+          </div>
+          <div class="flex items-center gap-1.5">
+            ${item.link ? `<a href="${item.link}" target="_blank" class="w-7 h-7 flex items-center justify-center bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 rounded-lg text-xs transition-all" title="Ver en tienda"><i class="fa-solid fa-arrow-up-right-from-square"></i></a>` : ''}
+            <button onclick="deleteItem(${item.id})" class="w-7 h-7 flex items-center justify-center bg-slate-800 hover:bg-rose-600/80 text-slate-400 hover:text-white rounded-lg text-xs transition-all"><i class="fa-solid fa-trash-can"></i></button>
+          </div>
+        </div>
+
+        ${item.notes ? `<div class="text-[11px] bg-slate-900/60 p-2 rounded-lg text-slate-300 border border-slate-800 italic">📝 ${item.notes}</div>` : ''}
+
+        <div class="flex items-center justify-between text-[10px] text-slate-500 border-t border-slate-800/80 pt-1.5">
+          <span>Agregado por: <strong class="text-slate-400">${item.author}</strong></span>
+          <span>${item.date}</span>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  // ================= ESCÁNER DE FOTO CON GEMINI VISION =================
+  async function handleImageUpload(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!geminiKey.trim()) {
+      alert("Para interpretar caligrafía de fotos, guarda primero tu clave gratuita de Google AI Studio en el botón de Configuración (⚙️).");
+      openSettingsModal();
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function() {
+      const base64Data = reader.result.split(',')[1];
+      await analyzeImageWithGemini(base64Data, file.type);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  async function analyzeImageWithGemini(base64Image, mimeType) {
+    const prompt = `Analiza esta imagen con una lista manuscrita de compras. Devuelve ÚNICAMENTE un array JSON válido con la siguiente estructura de objetos:
+    [
+      {
+        "name": "nombre del producto",
+        "qty": "cantidad o peso si se indica (ej. 1 kg, 2 u, o 1 u si no dice)",
+        "category": "Una de estas categorías: ${categories.join(', ')}",
+        "originalText": "texto exacto que creíste leer"
+      }
+    ]
+    No incluyas markdown, no incluyas comillas invertidas (\`\`\`json). Solo el JSON plano.`;
+
+    try {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: mimeType, data: base64Image } }
+            ]
+          }]
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message || "Error procesando con Gemini");
+
+      let rawText = data.candidates[0].content.parts[0].text.trim();
+      rawText = rawText.replace(/```json/g, "").replace(/```/g, "").trim();
+      pendingReviewItems = JSON.parse(rawText);
+      openAiReviewModal();
+
+    } catch (err) {
+      alert("Error al interpretar la foto: " + err.message);
+    }
+  }
+
+  // ================= PANTALLA DE VALIDACIÓN PREVIA =================
+  function openAiReviewModal() {
+    renderReviewItems();
+    document.getElementById('aiReviewModal').classList.remove('hidden');
+  }
+
+  function closeReviewModal() {
+    document.getElementById('aiReviewModal').classList.add('hidden');
+    pendingReviewItems = [];
+  }
+
+  function renderReviewItems() {
+    const list = document.getElementById('aiReviewList');
+    if (pendingReviewItems.length === 0) {
+      list.innerHTML = `<p class="text-xs text-slate-400 text-center py-4">No hay ítems para confirmar.</p>`;
+      return;
+    }
+
+    list.innerHTML = pendingReviewItems.map((item, index) => `
+      <div class="bg-slate-900/90 p-3 rounded-xl border border-slate-700 flex flex-col gap-2">
+        <div class="flex items-center justify-between text-[11px] text-slate-400">
+          <span>La IA leyó: <strong class="text-indigo-300">"${item.originalText || item.name}"</strong></span>
+          <button onclick="removeReviewRow(${index})" class="text-rose-400 hover:text-rose-300">🗑️ Descartar</button>
+        </div>
+        <div class="grid grid-cols-5 gap-2">
+          <input type="text" value="${item.name}" onchange="updateReviewItem(${index}, 'name', this.value)" placeholder="Producto" class="col-span-2 bg-slate-800 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 text-white">
+          <input type="text" value="${item.qty}" onchange="updateReviewItem(${index}, 'qty', this.value)" placeholder="Cant." class="col-span-1 bg-slate-800 text-xs px-2.5 py-1.5 rounded-lg border border-slate-700 text-white">
+          <select onchange="updateReviewItem(${index}, 'category', this.value)" class="col-span-2 bg-slate-800 text-xs px-2 py-1.5 rounded-lg border border-slate-700 text-white">
+            ${categories.map(c => `<option value="${c}" ${c === item.category ? 'selected' : ''}>${c}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function updateReviewItem(index, key, val) {
+    pendingReviewItems[index][key] = val;
+  }
+
+  function removeReviewRow(index) {
+    pendingReviewItems.splice(index, 1);
+    renderReviewItems();
+  }
+
+  function addManualReviewRow() {
+    pendingReviewItems.push({
+      name: "",
+      qty: "1 u",
+      category: categories[0],
+      originalText: "Agregado manual"
+    });
+    renderReviewItems();
+  }
+
+  function confirmAiBatchImport() {
+    const validItems = pendingReviewItems.filter(i => i.name.trim() !== "");
+    if (validItems.length === 0) return alert("No hay artículos con nombre válido.");
+
+    validItems.forEach(item => {
+      items.unshift({
+        id: Date.now() + Math.random(),
+        name: item.name.trim(),
+        qty: item.qty.trim() || "1 u",
+        category: item.category,
+        link: "",
+        notes: "Importado vía foto IA",
+        bought: false,
+        author: currentUser,
+        date: new Date().toLocaleDateString('es-AR')
+      });
+    });
+
+    saveItems();
+    closeReviewModal();
+    alert(`¡Se agregaron ${validItems.length} artículos a la lista!`);
+  }
+
+  // ================= RECONOCIMIENTO POR VOZ =================
+  function startVoiceRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) return alert("Tu navegador no soporta dictado por voz directo.");
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'es-AR';
+    recognition.interimResults = false;
+
+    const micBtn = document.getElementById('micBtn');
+    const micText = document.getElementById('micText');
+    micText.innerText = "Escuchando...";
+    micBtn.classList.add('ring-2', 'ring-teal-400');
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      document.getElementById('itemName').value = transcript;
+    };
+
+    recognition.onend = () => {
+      micText.innerText = "🎙️ Dictar por voz";
+      micBtn.classList.remove('ring-2', 'ring-teal-400');
+    };
+
+    recognition.start();
+  }
+
+  // ================= COMPARTIR WHATSAPP =================
+  function shareWhatsApp() {
+    if (items.length === 0) return alert("La lista está vacía.");
+    let text = `🛒 *${appName} - Lista de Compras*\n\n`;
+    
+    categories.forEach(cat => {
+      const catItems = items.filter(i => i.category === cat && !i.bought);
+      if (catItems.length > 0) {
+        text += `📂 *${cat}*:\n`;
+        catItems.forEach(i => {
+          text += `  • ${i.name} (${i.qty})${i.notes ? ` [${i.notes}]` : ''} - _p/ ${i.author}_\n`;
+        });
+      }
+    });
+
+    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+  }
+
+  // ================= HISTÓRICO Y CIERRE DE DOMINGO =================
+  function closeWeekSunday() {
+    const bought = items.filter(i => i.bought);
+    if (bought.length === 0) return alert("No hay productos comprados para archivar.");
+
+    const dateStr = `Domingo ${new Date().toLocaleDateString('es-AR')}`;
+    historyWeeks.unshift({ date: dateStr, items: bought });
+    items = items.filter(i => !i.bought);
+
+    localStorage.setItem('pipi_history', JSON.stringify(historyWeeks));
+    saveItems();
+    alert(`Se archivaron ${bought.length} compras en el histórico semanal.`);
+  }
+
+  function switchTab(tab) {
+    const activeContainer = document.getElementById('itemsContainer');
+    const historyContainer = document.getElementById('historyContainer');
+    const tabActiveBtn = document.getElementById('tabActiveBtn');
+    const tabHistoryBtn = document.getElementById('tabHistoryBtn');
+
+    if (tab === 'active') {
+      activeContainer.classList.remove('hidden');
+      historyContainer.classList.add('hidden');
+      tabActiveBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40";
+      tabHistoryBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-transparent";
+    } else {
+      activeContainer.classList.add('hidden');
+      historyContainer.classList.remove('hidden');
+      tabActiveBtn.className = "px-3 py-1.5 rounded-lg text-xs font-medium text-slate-400 hover:text-slate-200 border border-transparent";
+      tabHistoryBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold bg-teal-500/20 text-teal-300 border border-teal-500/40";
+      renderHistory();
+    }
+  }
+
+  function renderHistory() {
+    const container = document.getElementById('historyContainer');
+    if (historyWeeks.length === 0) {
+      container.innerHTML = `<p class="text-xs text-slate-400 text-center py-8">No hay semanas archivadas todavía.</p>`;
+      return;
+    }
+
+    container.innerHTML = historyWeeks.map((week, idx) => `
+      <div class="glass-panel p-4 rounded-2xl flex flex-col gap-2">
+        <h4 class="text-xs font-bold text-teal-400 flex items-center gap-1.5">
+          <i class="fa-solid fa-calendar-week"></i> ${week.date} (${week.items.length} productos)
+        </h4>
+        <ul class="text-xs text-slate-300 flex flex-col gap-1 pl-2">
+          ${week.items.map(i => `<li>• ${i.name} (${i.qty}) - <span class="text-slate-500">${i.category}</span></li>`).join('')}
+        </ul>
+      </div>
+    `).join('');
+  }
+
+  init();
+</script>
+</body>
+</html>
